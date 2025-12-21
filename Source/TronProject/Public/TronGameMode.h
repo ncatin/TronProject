@@ -13,5 +13,8 @@ UCLASS()
 class TRONPROJECT_API ATronGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
+
+protected:
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	
 };
