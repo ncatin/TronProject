@@ -5,10 +5,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "DirectionEnum.h"
+#include "TimerManager.h"
 #include "TronPlayerController.generated.h"
 
 class UInputMappingContext;
 class UInputAction;
+class APlayerPawn;
 
 UCLASS()
 class TRONPROJECT_API ATronPlayerController : public APlayerController
@@ -19,6 +21,7 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputMappingContext* DefaultMappingContext;
 
@@ -34,18 +37,24 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* IA_MoveDown;
 
+	UFUNCTION()
 	void MoveLeft();
 
+	UFUNCTION()
 	void MoveUp();
 
+	UFUNCTION()
 	void MoveDown();
 
+	UFUNCTION()
 	void MoveRight();
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent);
+	virtual void SetupInputComponent() override;
 
 	UPROPERTY(EditAnywhere, Category = "Current Direction")
 	EMoveDirection CurrentDirection;
+
+	APlayerPawn* ControlledPawn;
 
 
 	

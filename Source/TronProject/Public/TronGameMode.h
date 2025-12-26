@@ -6,13 +6,20 @@
 #include "GameFramework/GameModeBase.h"
 #include "TronGameMode.generated.h"
 
-/**
- * 
- */
+
+class TronPlayerController;
+class AStaticCameraActor;
+
 UCLASS()
 class TRONPROJECT_API ATronGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<APawn> PlayerClass;
+
+	void BeginPlay() override;
 
 protected:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;

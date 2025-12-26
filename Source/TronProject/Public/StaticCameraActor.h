@@ -6,6 +6,9 @@
 #include "GameFramework/Actor.h"
 #include "StaticCameraActor.generated.h"
 
+class USpringArmComponent;
+class UCameraComponent;
+
 UCLASS()
 class TRONPROJECT_API AStaticCameraActor : public AActor
 {
@@ -14,6 +17,12 @@ class TRONPROJECT_API AStaticCameraActor : public AActor
 public:	
 	// Sets default values for this actor's properties
 	AStaticCameraActor();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USpringArmComponent* SpringArmComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UCameraComponent* CameraComp;
 
 protected:
 	// Called when the game starts or when spawned
