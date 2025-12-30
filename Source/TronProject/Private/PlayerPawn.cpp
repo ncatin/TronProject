@@ -6,6 +6,9 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
+#include "Engine/StaticMeshActor.h"
+#include "Engine/StaticMesh.h"
+#include "Components/StaticMeshComponent.h"
 
 
 
@@ -26,7 +29,8 @@ APlayerPawn::APlayerPawn()
 	PMComponent->SetUpdatedComponent(RootComponent);
 
 	SpComponent = CreateDefaultSubobject<USplineComponent>(TEXT("SplineComponent"));
-
+	SpComponent->bAllowDiscontinuousSpline = true;
+	
 }
 
 // Called when the game starts or when spawned
@@ -51,23 +55,14 @@ void APlayerPawn::OnConstruction(const FTransform& Transform){
 	Super::OnConstruction(Transform);
 
 	SpComponent->SetLocationAtSplinePoint(0, GetActorLocation(), ESplineCoordinateSpace::World);
-	SpComponent->SetRotationAtSplinePoint(0, GetActorRotation(), ESplineCoordinateSpace::World);
 
-	SpComponent->GetLocationAndTangentAtSplinePoint(0, LocationStart, TangentStart, ESplineCoordinateSpace::World);
-	SpComponent->GetLocationAndTangentAtSplinePoint(1, LocationEnd, TangentEnd, ESplineCoordinateSpace::World);
+	SpComponent->SetSplinePointType(0, ESplinePointType::Linear);
+	SpComponent->SetSplinePointType(1, ESplinePointType::Linear);
 
-	USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
-	SplineMesh->SetMobility(EComponentMobility::Movable);
-	SplineMesh->SetupAttachment(SpComponent);
-	SplineMesh->bCastDynamicShadow = false;
-	if (WallMesh) SplineMesh->SetStaticMesh(WallMesh);
+	LocationStart = SpComponent->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
+	LocationEnd = SpComponent->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
 
-	SplineMesh->SetStartScale(FVector2D(1, 5));
-	SplineMesh->SetEndScale(FVector2D(1, 5));
-
-	SplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd);
-
-	SplineMeshComponents.Add(SplineMesh);
+	CreateSplineMesh();
 
 	RegisterAllComponents();
 	
@@ -77,16 +72,58 @@ void APlayerPawn::OnConstruction(const FTransform& Transform){
 void APlayerPawn::GetCurrentPointPosition(){
 
 	SpComponent->SetLocationAtSplinePoint(CurrentSplineIndex, GetActorLocation(), ESplineCoordinateSpace::World);
-	SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex, LocationEnd, TangentEnd, ESplineCoordinateSpace::World);
-	SplineMeshComponents[CurrentSplineMeshIndex]->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd);
-	SplineMeshComponents[CurrentSplineMeshIndex]->RegisterComponent();
-	UE_LOG(LogTemp, Warning, TEXT("Getting Spline Point"));
+	LocationEnd = SpComponent->GetLocationAtSplinePoint(CurrentSplineIndex, ESplineCoordinateSpace::World);
+	SplineMeshComponents[CurrentSplineMeshIndex]->SetStartAndEnd(LocationStart, FVector::ZeroVector, LocationEnd, FVector::ZeroVector);
 }
 
 void APlayerPawn::Turn(FRotator TurnDirection){
+
+	FBox BoundingBox = WallMesh->GetBoundingBox();
+	FVector Dimensions = BoundingBox.GetExtent();
+
+	FVector SpawnPoint = LocationEnd;
+
+
+	AStaticMeshActor* CornerMesh = GetWorld()->SpawnActor<AStaticMeshActor>(SpawnPoint, FRotator::ZeroRotator);
+	CornerMesh->SetMobility(EComponentMobility::Movable);
+	UStaticMeshComponent* StaticMeshComp = CornerMesh->GetStaticMeshComponent();
+	StaticMeshComp->SetStaticMesh(WallMesh);
+	
+
+	FSplinePoint NewPoint;
+
+	NewPoint.Position = GetActorLocation();
+	NewPoint.Rotation = TurnDirection;
+	NewPoint.InputKey = ++CurrentSplineIndex;
+	NewPoint.Type = ESplinePointType::Linear;
+	
+	SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::World);
+	SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex-1, LocationStart, TangentStart, ESplineCoordinateSpace::World);
+	
+	CreateSplineMesh();
+	CurrentSplineMeshIndex++;
+
 	SetActorRotation(TurnDirection);
 	PMComponent->Velocity = GetActorForwardVector() * 500;
 	UE_LOG(LogTemp, Warning, TEXT("Rotated"));
+}
+
+void APlayerPawn::CreateSplineMesh(){
+
+	USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
+	SplineMesh->SetMobility(EComponentMobility::Movable);
+	SplineMesh->SetupAttachment(SpComponent);
+	SplineMesh->bCastDynamicShadow = false;
+	if (WallMesh) SplineMesh->SetStaticMesh(WallMesh);
+
+	SplineMesh->SetStartScale(FVector2D(1,1));
+	SplineMesh->SetEndScale(FVector2D(1, 1));
+
+	SplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd);
+	SplineMesh->RegisterComponent();
+
+	SplineMeshComponents.Add(SplineMesh);
+
 }
 
 // Called every frame

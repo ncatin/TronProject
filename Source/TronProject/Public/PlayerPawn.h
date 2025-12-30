@@ -13,6 +13,7 @@ class ATronPlayerController;
 class USplineComponent;
 class USplineMeshComponent;
 
+
 UCLASS()
 class TRONPROJECT_API APlayerPawn : public APawn
 {
@@ -58,6 +59,9 @@ public:
 
 	UFUNCTION()
 	void Turn(FRotator TurnDirection);
+
+	UFUNCTION()
+	void CreateSplineMesh();
 
 
 	// Called every frame

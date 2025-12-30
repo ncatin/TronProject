@@ -17,6 +17,7 @@ void ATronPlayerController::BeginPlay() {
 	}
 
 	ConsoleCommand(TEXT("show splines"));
+	//ConsoleCommand(TEXT("show COLLISION"));
 	
 	ControlledPawn = Cast<APlayerPawn>(GetPawn());
 	if(!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
