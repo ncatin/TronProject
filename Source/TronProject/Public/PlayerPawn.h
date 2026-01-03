@@ -12,6 +12,9 @@ class UProjectileMovementComponent;
 class ATronPlayerController;
 class USplineComponent;
 class USplineMeshComponent;
+class UCapsuleComponent;
+class UNiagaraSystem;
+class UAudioComponent;
 
 
 UCLASS()
@@ -54,6 +57,15 @@ public:
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* WallMesh;
 
+	UPROPERTY(EditAnywhere)
+	UCapsuleComponent* CollisionCapsule;
+
+	UPROPERTY(EditAnywhere)
+	UNiagaraSystem* ExplosionSystem;
+
+	UPROPERTY(EditDefaultsOnly)
+	USoundBase* DeathSoundEffect;
+
 	UFUNCTION()
 	void GetCurrentPointPosition();
 
@@ -62,6 +74,9 @@ public:
 
 	UFUNCTION()
 	void CreateSplineMesh();
+
+	UFUNCTION()
+	void OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 
 	// Called every frame

@@ -9,6 +9,10 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
+#include <Components/CapsuleComponent.h>
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Components/AudioComponent.h"
 
 
 
@@ -17,6 +21,9 @@ APlayerPawn::APlayerPawn()
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	SetReplicates(true);
+	SetReplicateMovement(true);
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
@@ -30,7 +37,9 @@ APlayerPawn::APlayerPawn()
 
 	SpComponent = CreateDefaultSubobject<USplineComponent>(TEXT("SplineComponent"));
 	SpComponent->bAllowDiscontinuousSpline = true;
-	
+
+	CollisionCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComponent"));
+	CollisionCapsule->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned
@@ -38,13 +47,7 @@ void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-	if (PlayerController) {
-		EnableInput(PlayerController);
-	}
-	else {
-		UE_LOG(LogTemp, Warning, TEXT("Error"));
-	} 
+	CollisionCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerPawn::OnCollision);
 
 	FTimerManager& TimerManager = GetWorldTimerManager();
 	TimerManager.SetTimer(RepeatingHandle, this, &APlayerPawn::GetCurrentPointPosition, PointCaptureRate, true);
@@ -88,7 +91,8 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 	CornerMesh->SetMobility(EComponentMobility::Movable);
 	UStaticMeshComponent* StaticMeshComp = CornerMesh->GetStaticMeshComponent();
 	StaticMeshComp->SetStaticMesh(WallMesh);
-	
+	StaticMeshComp->SetCastShadow(false);
+	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
 	FSplinePoint NewPoint;
 
@@ -104,7 +108,7 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 	CurrentSplineMeshIndex++;
 
 	SetActorRotation(TurnDirection);
-	PMComponent->Velocity = GetActorForwardVector() * 500;
+	PMComponent->Velocity = GetActorForwardVector() * 700;
 	UE_LOG(LogTemp, Warning, TEXT("Rotated"));
 }
 
@@ -112,6 +116,7 @@ void APlayerPawn::CreateSplineMesh(){
 
 	USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
 	SplineMesh->SetMobility(EComponentMobility::Movable);
+	SplineMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SplineMesh->SetupAttachment(SpComponent);
 	SplineMesh->bCastDynamicShadow = false;
 	if (WallMesh) SplineMesh->SetStaticMesh(WallMesh);
@@ -124,6 +129,25 @@ void APlayerPawn::CreateSplineMesh(){
 
 	SplineMeshComponents.Add(SplineMesh);
 
+}
+
+void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult){
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *OtherActor->GetName());
+
+	if (OtherActor == this) {
+		return;
+	}
+
+	PMComponent->Velocity = GetActorForwardVector() * 0;
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	DisableInput(PlayerController);
+
+	if (ExplosionSystem) {
+		FVector SpawnLocation = this->GetActorLocation();
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionSystem, SpawnLocation, FRotator::ZeroRotator);
+	}
+	MeshComponent->SetVisibility(false);
 }
 
 // Called every frame

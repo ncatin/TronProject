@@ -74,3 +74,10 @@ void ATronPlayerController::SetupInputComponent(){
 		EnhancedInputComponent->BindAction(IA_MoveDown, ETriggerEvent::Triggered, this, &ATronPlayerController::MoveDown);
 	}
 }
+
+void ATronPlayerController::OnPossess(APawn* InPawn){
+	ControlledPawn = Cast<APlayerPawn>(InPawn);
+	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
+
+	ControlledPawn->EnableInput(this);
+}

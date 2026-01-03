@@ -5,20 +5,34 @@
 #include <Kismet/GameplayStatics.h>
 #include "TronPlayerController.h"
 #include "StaticCameraActor.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
+#include "GameFramework/PlayerStart.h"
 
 void ATronGameMode::BeginPlay(){
-	AStaticCameraActor* StaticCamera = GetWorld()->SpawnActor<AStaticCameraActor>(FVector(0.0f, 0.0f, 2000.0f), FRotator(-90.0f, 0.0f, 0.0f));
+	AStaticCameraActor* StaticCamera = GetWorld()->SpawnActor<AStaticCameraActor>(FVector(0.0f, 0.0f, 3000.0f), FRotator(-90.0f, 0.0f, 0.0f));
 
-	ATronPlayerController* PlayerController = Cast<ATronPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-
-	if (PlayerController) {
-		PlayerController->SetViewTarget(StaticCamera);
+	GameState = GetWorld()->GetGameState();
+	for (APlayerState* PlayerState : GameState->PlayerArray) {
+		if (PlayerState) {
+			APlayerController* PlayerController =  Cast<APlayerController>(PlayerState->GetOwner());
+			if (PlayerController) {
+				PlayerController->SetViewTarget(StaticCamera);
+			}
+			else {
+				UE_LOG(LogTemp, Warning, TEXT("Error: Set View Target failed"));
+			}
+		}
 	}
+
+	//ATronPlayerController* PlayerController = Cast<ATronPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+
 }
 
 void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer){
 	
 	if (NewPlayer) {
+		
 		AActor* StartPoint = FindPlayerStart(NewPlayer);
 		if (StartPoint) {
 			FVector SpawnLocation = StartPoint->GetActorLocation();
@@ -32,9 +46,23 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 				NewPlayer->Possess(NewPawn);
 			}
 			else {
-				UE_LOG(LogTemp, Warning, TEXT("Error"));
+				UE_LOG(LogTemp, Warning, TEXT("Error: Posession failed"));
 			}
+			StartPoint->Tags.Remove(FName("Available"));
 
 		}
 	}
+}
+
+AActor* ATronGameMode::ChoosePlayerStart_Implementation(AController* Player, TSubclassOf<AActor> PlayerStartClass)
+{
+	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), APlayerStart::StaticClass(), "Available", PlayerStarts);
+	AActor* ChoosenPlayerStart = PlayerStarts[0];
+	if (ChoosenPlayerStart) {
+		return ChoosenPlayerStart;
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("Error: No Player Start"));
+	}
+	return nullptr;
 }

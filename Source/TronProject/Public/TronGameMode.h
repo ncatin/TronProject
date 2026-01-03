@@ -19,9 +19,13 @@ public:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<APawn> PlayerClass;
 
+	UPROPERTY(EditAnywhere)
+	TArray<AActor*> PlayerStarts;
+
 	void BeginPlay() override;
 
 protected:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player, TSubclassOf<AActor> PlayerStartClass);
 	
 };

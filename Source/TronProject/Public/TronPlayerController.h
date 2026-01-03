@@ -50,6 +50,7 @@ public:
 	void MoveRight();
 
 	virtual void SetupInputComponent() override;
+	virtual void OnPossess(APawn* InPawn) override;
 
 	UPROPERTY(EditAnywhere, Category = "Current Direction")
 	EMoveDirection CurrentDirection;
