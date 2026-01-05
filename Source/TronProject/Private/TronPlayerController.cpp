@@ -4,10 +4,12 @@
 #include "TronPlayerController.h"
 #include <EnhancedInputSubsystems.h>
 #include <EnhancedInputComponent.h>
+#include "InputMappingContext.h"
 #include "PlayerPawn.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
+#include "StaticCameraActor.h"
 
 
 
@@ -16,15 +18,14 @@ void ATronPlayerController::BeginPlay() {
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
 
+	AStaticCameraActor* StaticCamera = GetWorld()->SpawnActor<AStaticCameraActor>(FVector(0.0f, 0.0f, 3000.0f), FRotator(-90.0f, 0.0f, 0.0f));
+	SetViewTarget(StaticCamera);
+
 	ConsoleCommand(TEXT("show splines"));
-	//ConsoleCommand(TEXT("show COLLISION"));
-	
-	ControlledPawn = Cast<APlayerPawn>(GetPawn());
-	if(!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
 	
 	CurrentDirection = EMoveDirection::ED_Left;
 	UE_LOG(LogTemp, Warning, TEXT("Current Direction: %s"), *UEnum::GetValueAsString(CurrentDirection));
-
+	
 }
 
 
@@ -79,5 +80,5 @@ void ATronPlayerController::OnPossess(APawn* InPawn){
 	ControlledPawn = Cast<APlayerPawn>(InPawn);
 	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
 
-	ControlledPawn->EnableInput(this);
+	ControlledPawn->OnPossess();
 }

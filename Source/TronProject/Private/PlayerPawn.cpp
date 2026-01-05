@@ -13,6 +13,8 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Components/AudioComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 
 
 
@@ -40,6 +42,7 @@ APlayerPawn::APlayerPawn()
 
 	CollisionCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComponent"));
 	CollisionCapsule->SetupAttachment(RootComponent);
+
 }
 
 // Called when the game starts or when spawned
@@ -70,6 +73,11 @@ void APlayerPawn::OnConstruction(const FTransform& Transform){
 	RegisterAllComponents();
 	
 
+}
+
+void APlayerPawn::OnPossess(){
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	EnableInput(PlayerController);
 }
 
 void APlayerPawn::GetCurrentPointPosition(){

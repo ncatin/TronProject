@@ -15,6 +15,8 @@ class USplineMeshComponent;
 class UCapsuleComponent;
 class UNiagaraSystem;
 class UAudioComponent;
+class USpringArmComponent;
+class UCameraComponent;
 
 
 UCLASS()
@@ -77,6 +79,8 @@ public:
 
 	UFUNCTION()
 	void OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	void OnPossess();
 
 
 	// Called every frame

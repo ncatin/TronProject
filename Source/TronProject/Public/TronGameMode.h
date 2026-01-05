@@ -26,6 +26,6 @@ public:
 
 protected:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
-	virtual AActor* ChoosePlayerStart_Implementation(AController* Player, TSubclassOf<AActor> PlayerStartClass);
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 	
 };

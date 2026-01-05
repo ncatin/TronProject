@@ -10,22 +10,6 @@
 #include "GameFramework/PlayerStart.h"
 
 void ATronGameMode::BeginPlay(){
-	AStaticCameraActor* StaticCamera = GetWorld()->SpawnActor<AStaticCameraActor>(FVector(0.0f, 0.0f, 3000.0f), FRotator(-90.0f, 0.0f, 0.0f));
-
-	GameState = GetWorld()->GetGameState();
-	for (APlayerState* PlayerState : GameState->PlayerArray) {
-		if (PlayerState) {
-			APlayerController* PlayerController =  Cast<APlayerController>(PlayerState->GetOwner());
-			if (PlayerController) {
-				PlayerController->SetViewTarget(StaticCamera);
-			}
-			else {
-				UE_LOG(LogTemp, Warning, TEXT("Error: Set View Target failed"));
-			}
-		}
-	}
-
-	//ATronPlayerController* PlayerController = Cast<ATronPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 
 }
 
@@ -54,15 +38,16 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 	}
 }
 
-AActor* ATronGameMode::ChoosePlayerStart_Implementation(AController* Player, TSubclassOf<AActor> PlayerStartClass)
+AActor* ATronGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
 	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), APlayerStart::StaticClass(), "Available", PlayerStarts);
 	AActor* ChoosenPlayerStart = PlayerStarts[0];
 	if (ChoosenPlayerStart) {
+		UE_LOG(LogTemp, Warning, TEXT("Player Start Found"));
 		return ChoosenPlayerStart;
 	}
 	else {
 		UE_LOG(LogTemp, Warning, TEXT("Error: No Player Start"));
 	}
-	return nullptr;
+	return Super::ChoosePlayerStart_Implementation(Player);
 }
