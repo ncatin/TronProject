@@ -50,6 +50,8 @@ void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	bDead = false;
+
 	CollisionCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerPawn::OnCollision);
 
 	FTimerManager& TimerManager = GetWorldTimerManager();
@@ -78,6 +80,7 @@ void APlayerPawn::OnConstruction(const FTransform& Transform){
 void APlayerPawn::OnPossess(){
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	EnableInput(PlayerController);
+	PMComponent->Velocity = GetActorForwardVector() * speed;
 }
 
 void APlayerPawn::GetCurrentPointPosition(){
@@ -116,7 +119,7 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 	CurrentSplineMeshIndex++;
 
 	SetActorRotation(TurnDirection);
-	PMComponent->Velocity = GetActorForwardVector() * 700;
+	PMComponent->Velocity = GetActorForwardVector() * speed;
 	UE_LOG(LogTemp, Warning, TEXT("Rotated"));
 }
 
@@ -145,6 +148,7 @@ void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* 
 	if (OtherActor == this) {
 		return;
 	}
+	bDead = true;
 
 	PMComponent->Velocity = GetActorForwardVector() * 0;
 

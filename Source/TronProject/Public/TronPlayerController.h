@@ -20,6 +20,8 @@ class TRONPROJECT_API ATronPlayerController : public APlayerController
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -37,6 +39,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* IA_MoveDown;
 
+	UPROPERTY()
+	TSubclassOf<UUserWidget> UIClass;
+
+	UPROPERTY()
+	UUserWidget* UIWidget;
+
 	UFUNCTION()
 	void MoveLeft();
 
@@ -51,6 +59,8 @@ public:
 
 	virtual void SetupInputComponent() override;
 	virtual void OnPossess(APawn* InPawn) override;
+
+	void SetSpeed(float fspeed);
 
 	UPROPERTY(EditAnywhere, Category = "Current Direction")
 	EMoveDirection CurrentDirection;

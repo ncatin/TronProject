@@ -34,6 +34,8 @@ protected:
 
 	int32 CurrentSplineIndex = 1;
 	int32 CurrentSplineMeshIndex = 0;
+	
+	bool bDead = false;
 
 	FTimerHandle RepeatingHandle;
 
@@ -46,6 +48,7 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 public:	
+	int32 speed = 700;
 
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* MeshComponent;

@@ -13,6 +13,26 @@ void ATronGameMode::BeginPlay(){
 
 }
 
+void ATronGameMode::Ready(){
+	ReadyPlayers++;
+	if (ReadyPlayers == 2) {
+		//Start UI countdown
+	}
+}
+
+void ATronGameMode::SetBegin(bool flag) { StartFlag = flag; }
+
+bool ATronGameMode::GetBegin() { return StartFlag; }
+
+void ATronGameMode::StartMatch(){
+	TArray<AActor*> Players;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATronPlayerController::StaticClass(), Players);
+	for (AActor* Player : Players) {
+		ATronPlayerController* PlayerController = Cast<ATronPlayerController>(Player);
+		PlayerController->SetSpeed(700);
+	}
+}
+
 void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer){
 	
 	if (NewPlayer) {
@@ -20,11 +40,26 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 		AActor* StartPoint = FindPlayerStart(NewPlayer);
 		if (StartPoint) {
 			FVector SpawnLocation = StartPoint->GetActorLocation();
-			FRotator SpawnRotation = FRotator(0.0f, -90.0f, 0.0f);
+			FRotator SpawnRotation;
+			if (SpawnLocation.Y > 0) {
+				SpawnRotation = FRotator(0.0f, -90.0f, 0.0f);
+			}
+			else {
+				SpawnRotation = FRotator(0.0f, 90.0f, 0.0f);
+			}
+			
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.Owner = NewPlayer;
 
-			APawn* NewPawn = GetWorld()->SpawnActor<APawn>(this->DefaultPawnClass, SpawnLocation, SpawnRotation, SpawnParams);
+			APawn* NewPawn;
+			UClass* PlayerClass;
+			if (JoinedPlayers == 0) {
+				PlayerClass = PlayerOne;
+			}else{
+				PlayerClass = PlayerTwo;
+			}
+			NewPawn = GetWorld()->SpawnActor<APawn>(PlayerClass, SpawnLocation, SpawnRotation, SpawnParams);
+			JoinedPlayers++;
 
 			if (NewPawn) {
 				NewPlayer->Possess(NewPawn);

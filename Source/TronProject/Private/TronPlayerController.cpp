@@ -10,7 +10,9 @@
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "StaticCameraActor.h"
-
+#include "TronGameMode.h"
+#include <Kismet/GameplayStatics.h>
+#include "Blueprint/UserWidget.h"
 
 
 void ATronPlayerController::BeginPlay() {
@@ -25,7 +27,16 @@ void ATronPlayerController::BeginPlay() {
 	
 	CurrentDirection = EMoveDirection::ED_Left;
 	UE_LOG(LogTemp, Warning, TEXT("Current Direction: %s"), *UEnum::GetValueAsString(CurrentDirection));
+
+	if (IsLocalPlayerController()) {
+		UIWidget = CreateWidget<UUserWidget>(this, UIClass);
+		UIWidget->AddToViewport();
+	}
 	
+}
+
+void ATronPlayerController::Tick(float DeltaTime){
+
 }
 
 
@@ -79,6 +90,14 @@ void ATronPlayerController::SetupInputComponent(){
 void ATronPlayerController::OnPossess(APawn* InPawn){
 	ControlledPawn = Cast<APlayerPawn>(InPawn);
 	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
+	ControlledPawn->speed = 0;
+
+	ATronGameMode* Gamemode = Cast<ATronGameMode>(UGameplayStatics::GetGameMode(this));
+	Gamemode->Ready();
 
 	ControlledPawn->OnPossess();
+}
+
+void ATronPlayerController::SetSpeed(float fspeed){
+	ControlledPawn->speed = fspeed;
 }
