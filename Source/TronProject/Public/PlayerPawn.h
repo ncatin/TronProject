@@ -47,7 +47,10 @@ protected:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 public:	
+	UPROPERTY(ReplicatedUsing = OnRep_Speed, BlueprintReadOnly)
 	int32 speed = 700;
 
 	UPROPERTY(EditAnywhere)
@@ -72,10 +75,16 @@ public:
 	USoundBase* DeathSoundEffect;
 
 	UFUNCTION()
+	void OnRep_Speed();
+
+	UFUNCTION()
 	void GetCurrentPointPosition();
 
 	UFUNCTION()
 	void Turn(FRotator TurnDirection);
+
+	UFUNCTION(Server, Reliable)
+	void Server_Turn(FRotator TurnDirection);
 
 	UFUNCTION()
 	void CreateSplineMesh();
@@ -83,7 +92,11 @@ public:
 	UFUNCTION()
 	void OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
+	UFUNCTION()
 	void OnPossess();
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnPossess();
 
 
 	// Called every frame

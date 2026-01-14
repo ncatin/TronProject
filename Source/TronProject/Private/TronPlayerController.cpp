@@ -13,6 +13,8 @@
 #include "TronGameMode.h"
 #include <Kismet/GameplayStatics.h>
 #include "Blueprint/UserWidget.h"
+#include "Net/UnrealNetwork.h"
+#include "GameWidget.h"
 
 
 void ATronPlayerController::BeginPlay() {
@@ -32,6 +34,11 @@ void ATronPlayerController::BeginPlay() {
 		UIWidget = CreateWidget<UUserWidget>(this, UIClass);
 		UIWidget->AddToViewport();
 	}
+	if (HasAuthority()) {
+		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+		TimerManager.SetTimer(RepeatingHandle, this, &ATronPlayerController::IncreaseTimerCount, 1, true);
+	}
+	
 	
 }
 
@@ -39,28 +46,131 @@ void ATronPlayerController::Tick(float DeltaTime){
 
 }
 
+void ATronPlayerController::OnRep_Pawn()
+{
+}
+
+void ATronPlayerController::AcknowledgePossession(APawn* P){
+	Super::AcknowledgePossession(P);
+	ControlledPawn = Cast<APlayerPawn>(P);
+	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
+	UE_LOG(LogTemp, Warning, TEXT("Possession Acknowledged"));
+	ControlledPawn->speed = 0;
+
+	ControlledPawn->OnPossess();
+}
+
+void ATronPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ATronPlayerController, CountdownIndex);
+}
+
+
+void ATronPlayerController::ServerSide_PossesPawn_Implementation(APawn* InPawn){
+	if (InPawn && HasAuthority()) {
+		Possess(InPawn);
+	}
+}
+
+void ATronPlayerController::OnRep_CountdownUpdate()
+{
+	if (UIWidget){
+		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
+		GameWidget->Countdown(CountdownIndex);
+		UE_LOG(LogTemp, Warning, TEXT("%d"), CountdownIndex);
+	}
+}
+
+void ATronPlayerController::IncreaseTimerCount_Implementation(){
+
+	if (CountdownIndex <= 4) {
+		CountdownIndex++;
+	}
+	else {
+		SetSpeed(700);
+		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+		TimerManager.ClearTimer(RepeatingHandle);
+	}
+	OnRep_CountdownUpdate();
+}
 
 void ATronPlayerController::MoveLeft(){
 	
-	if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
-		FRotator NewRotation = FRotator(0.0f, -90.0f, 0.0f);
-		ControlledPawn->Turn(NewRotation);
-		CurrentDirection = EMoveDirection::ED_Left;
+	if(HasAuthority()){
+		if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
+			FRotator NewRotation = FRotator(0.0f, -90.0f, 0.0f);
+			ControlledPawn->Turn(NewRotation);
+			CurrentDirection = EMoveDirection::ED_Left;
+		}
+	}
+	else {
+		Server_MoveLeft();
 	}
 
 }
 
 void ATronPlayerController::MoveUp(){
 
-	if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
-		FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
-		ControlledPawn->Turn(NewRotation);
-		CurrentDirection = EMoveDirection::ED_Up;
+	if (HasAuthority()) {
+		if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
+			FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
+			ControlledPawn->Turn(NewRotation);
+			CurrentDirection = EMoveDirection::ED_Up;
+		}
+	}
+	else {
+		Server_MoveUp();
 	}
 
 }
 
 void ATronPlayerController::MoveDown(){
+	if(HasAuthority()){
+		if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
+			FRotator NewRotation = FRotator(0.0f, 180.0f, 0.0f);
+			ControlledPawn->Turn(NewRotation);
+			CurrentDirection = EMoveDirection::ED_Down;
+		}
+	}
+	else {
+		Server_MoveDown();
+	}
+}
+
+void ATronPlayerController::MoveRight(){
+	if(HasAuthority()){
+		if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
+			FRotator NewRotation = FRotator(0.0f, 90.0f, 0.0f);
+			ControlledPawn->Turn(NewRotation);
+			CurrentDirection = EMoveDirection::ED_Right;
+		}
+	}
+	else {
+		Server_MoveRight();
+	}
+}
+
+void ATronPlayerController::Server_MoveLeft_Implementation()
+{
+	if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
+		FRotator NewRotation = FRotator(0.0f, -90.0f, 0.0f);
+		ControlledPawn->Turn(NewRotation);
+		CurrentDirection = EMoveDirection::ED_Left;
+	}
+}
+
+void ATronPlayerController::Server_MoveUp_Implementation()
+{
+	if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
+		FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
+		ControlledPawn->Turn(NewRotation);
+		CurrentDirection = EMoveDirection::ED_Up;
+	}
+}
+
+void ATronPlayerController::Server_MoveDown_Implementation()
+{
 	if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
 		FRotator NewRotation = FRotator(0.0f, 180.0f, 0.0f);
 		ControlledPawn->Turn(NewRotation);
@@ -68,7 +178,8 @@ void ATronPlayerController::MoveDown(){
 	}
 }
 
-void ATronPlayerController::MoveRight(){
+void ATronPlayerController::Server_MoveRight_Implementation()
+{
 	if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
 		FRotator NewRotation = FRotator(0.0f, 90.0f, 0.0f);
 		ControlledPawn->Turn(NewRotation);
@@ -88,16 +199,31 @@ void ATronPlayerController::SetupInputComponent(){
 }
 
 void ATronPlayerController::OnPossess(APawn* InPawn){
+	PossessPawn_Implementation(InPawn);
+}
+
+void ATronPlayerController::PossessPawn_Implementation(APawn* InPawn)
+{
 	ControlledPawn = Cast<APlayerPawn>(InPawn);
 	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
 	ControlledPawn->speed = 0;
-
-	ATronGameMode* Gamemode = Cast<ATronGameMode>(UGameplayStatics::GetGameMode(this));
-	Gamemode->Ready();
+	UE_LOG(LogTemp, Warning, TEXT("%s: %s"), *InPawn->GetName(), *ControlledPawn->GetVelocity().ToString());
 
 	ControlledPawn->OnPossess();
 }
 
-void ATronPlayerController::SetSpeed(float fspeed){
+void ATronPlayerController::Server_SetSpeed_Implementation(float fspeed){
 	ControlledPawn->speed = fspeed;
+}
+
+void ATronPlayerController::SetSpeed(float fspeed){
+	if (HasAuthority()) {
+		ControlledPawn->speed = fspeed;
+		UE_LOG(LogTemp, Warning, TEXT("Speed Set"));
+		ControlledPawn->OnRep_Speed();
+	}
+	else {
+		Server_SetSpeed(fspeed);
+	}
+	
 }

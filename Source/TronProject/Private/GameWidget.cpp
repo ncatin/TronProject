@@ -12,17 +12,13 @@ void UGameWidget::NativeConstruct(){
 }
 
 UGameWidget::UGameWidget(const FObjectInitializer& ObjectInitializer): Super(ObjectInitializer){
-	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
-	TimerManager.SetTimer(RepeatingHandle, this, &UGameWidget::Countdown, 1, true);
+	
 }
 
-void UGameWidget::Countdown(){
+void UGameWidget::Countdown(int32 CountdownIndex){
 	if (CountdownIndex > 4) {
-		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
-		TimerManager.ClearTimer(RepeatingHandle);
-		ATronPlayerController* Owner = Cast<ATronPlayerController>(GetOwningPlayer());
-		Owner->SetSpeed(700);
+		CountdownTextBlock->SetText(FText::GetEmpty());
+		return;
 	}
-	CountdownTextBlock->SetText(CountdownText[CountdownIndex++]);
-	
+	CountdownTextBlock->SetText(CountdownText[CountdownIndex]);
 }

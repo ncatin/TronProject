@@ -27,19 +27,13 @@ public:
 
 	void BeginPlay() override;
 
-	void Ready();
-
-	void SetBegin(bool flag);
-
-	bool GetBegin();
-
-	void StartMatch();
 protected:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	int32 ReadyPlayers = 0;
 	int32 JoinedPlayers = 0;
-	bool StartFlag = false;
+	
+	FTimerHandle RepeatingHandle;
 	
 };

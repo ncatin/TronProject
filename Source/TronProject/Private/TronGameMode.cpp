@@ -13,43 +13,26 @@ void ATronGameMode::BeginPlay(){
 
 }
 
-void ATronGameMode::Ready(){
-	ReadyPlayers++;
-	if (ReadyPlayers == 2) {
-		//Start UI countdown
-	}
-}
-
-void ATronGameMode::SetBegin(bool flag) { StartFlag = flag; }
-
-bool ATronGameMode::GetBegin() { return StartFlag; }
-
-void ATronGameMode::StartMatch(){
-	TArray<AActor*> Players;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATronPlayerController::StaticClass(), Players);
-	for (AActor* Player : Players) {
-		ATronPlayerController* PlayerController = Cast<ATronPlayerController>(Player);
-		PlayerController->SetSpeed(700);
-	}
-}
-
 void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer){
 	
-	if (NewPlayer) {
-		
-		AActor* StartPoint = FindPlayerStart(NewPlayer);
+	ATronPlayerController* NewTronPlayer = Cast<ATronPlayerController>(NewPlayer);
+	if (NewTronPlayer) {
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *NewTronPlayer->GetName());
+		AActor* StartPoint = FindPlayerStart(NewTronPlayer);
 		if (StartPoint) {
 			FVector SpawnLocation = StartPoint->GetActorLocation();
 			FRotator SpawnRotation;
-			if (SpawnLocation.Y > 0) {
+			if (StartPoint->ActorHasTag(FName("Right"))) {
 				SpawnRotation = FRotator(0.0f, -90.0f, 0.0f);
+				NewTronPlayer->CurrentDirection = EMoveDirection::ED_Left;
 			}
 			else {
 				SpawnRotation = FRotator(0.0f, 90.0f, 0.0f);
+				NewTronPlayer->CurrentDirection = EMoveDirection::ED_Right;
 			}
 			
 			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = NewPlayer;
+			SpawnParams.Owner = NewTronPlayer;
 
 			APawn* NewPawn;
 			UClass* PlayerClass;
@@ -59,10 +42,11 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 				PlayerClass = PlayerTwo;
 			}
 			NewPawn = GetWorld()->SpawnActor<APawn>(PlayerClass, SpawnLocation, SpawnRotation, SpawnParams);
+			UE_LOG(LogTemp, Warning, TEXT("%s: %s"), *NewPawn->GetName(), *NewTronPlayer->GetName());
 			JoinedPlayers++;
 
 			if (NewPawn) {
-				NewPlayer->Possess(NewPawn);
+				NewTronPlayer->ServerSide_PossesPawn(NewPawn);
 			}
 			else {
 				UE_LOG(LogTemp, Warning, TEXT("Error: Posession failed"));

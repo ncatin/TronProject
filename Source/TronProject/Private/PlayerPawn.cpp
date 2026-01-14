@@ -15,6 +15,7 @@
 #include "Components/AudioComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Net/UnrealNetwork.h"
 
 
 
@@ -57,6 +58,8 @@ void APlayerPawn::BeginPlay()
 	FTimerManager& TimerManager = GetWorldTimerManager();
 	TimerManager.SetTimer(RepeatingHandle, this, &APlayerPawn::GetCurrentPointPosition, PointCaptureRate, true);
 
+	
+
 }
 
 void APlayerPawn::OnConstruction(const FTransform& Transform){
@@ -77,9 +80,31 @@ void APlayerPawn::OnConstruction(const FTransform& Transform){
 
 }
 
+void APlayerPawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(APlayerPawn, speed);
+}
+
 void APlayerPawn::OnPossess(){
+	if(HasAuthority()){
+		APlayerController* PlayerController = Cast<APlayerController>(GetController());
+		EnableInput(PlayerController);
+		PMComponent->Velocity = GetActorForwardVector() * speed;
+	}
+	else {
+		Server_OnPossess();
+	}
+}
+
+void APlayerPawn::Server_OnPossess_Implementation()
+{
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	EnableInput(PlayerController);
+	PMComponent->Velocity = GetActorForwardVector() * speed;
+}
+
+void APlayerPawn::OnRep_Speed(){
 	PMComponent->Velocity = GetActorForwardVector() * speed;
 }
 
@@ -92,6 +117,44 @@ void APlayerPawn::GetCurrentPointPosition(){
 
 void APlayerPawn::Turn(FRotator TurnDirection){
 
+	if(HasAuthority()){
+		FBox BoundingBox = WallMesh->GetBoundingBox();
+		FVector Dimensions = BoundingBox.GetExtent();
+
+		FVector SpawnPoint = LocationEnd;
+
+
+		AStaticMeshActor* CornerMesh = GetWorld()->SpawnActor<AStaticMeshActor>(SpawnPoint, FRotator::ZeroRotator);
+		CornerMesh->SetMobility(EComponentMobility::Movable);
+		UStaticMeshComponent* StaticMeshComp = CornerMesh->GetStaticMeshComponent();
+		StaticMeshComp->SetStaticMesh(WallMesh);
+		StaticMeshComp->SetCastShadow(false);
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+		FSplinePoint NewPoint;
+
+		NewPoint.Position = GetActorLocation();
+		NewPoint.Rotation = TurnDirection;
+		NewPoint.InputKey = ++CurrentSplineIndex;
+		NewPoint.Type = ESplinePointType::Linear;
+
+		SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::World);
+		SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex - 1, LocationStart, TangentStart, ESplineCoordinateSpace::World);
+
+		CreateSplineMesh();
+		CurrentSplineMeshIndex++;
+
+		SetActorRotation(TurnDirection);
+		PMComponent->Velocity = GetActorForwardVector() * speed;
+		UE_LOG(LogTemp, Warning, TEXT("Rotated"));
+	}
+	else {
+		Server_Turn(TurnDirection);
+	}
+}
+
+void APlayerPawn::Server_Turn_Implementation(FRotator TurnDirection)
+{
 	FBox BoundingBox = WallMesh->GetBoundingBox();
 	FVector Dimensions = BoundingBox.GetExtent();
 
@@ -111,10 +174,10 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 	NewPoint.Rotation = TurnDirection;
 	NewPoint.InputKey = ++CurrentSplineIndex;
 	NewPoint.Type = ESplinePointType::Linear;
-	
+
 	SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::World);
-	SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex-1, LocationStart, TangentStart, ESplineCoordinateSpace::World);
-	
+	SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex - 1, LocationStart, TangentStart, ESplineCoordinateSpace::World);
+
 	CreateSplineMesh();
 	CurrentSplineMeshIndex++;
 
@@ -143,7 +206,6 @@ void APlayerPawn::CreateSplineMesh(){
 }
 
 void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult){
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *OtherActor->GetName());
 
 	if (OtherActor == this) {
 		return;

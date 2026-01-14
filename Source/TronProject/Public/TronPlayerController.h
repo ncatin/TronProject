@@ -22,6 +22,12 @@ protected:
 
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void OnRep_Pawn() override;
+
+	virtual void AcknowledgePossession(APawn* P) override;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -39,11 +45,23 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* IA_MoveDown;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UUserWidget> UIClass;
 
 	UPROPERTY()
 	UUserWidget* UIWidget;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CountdownUpdate, BlueprintReadOnly, Category = "UI")
+	int32 CountdownIndex = 0;
+
+	UFUNCTION()
+	void OnRep_CountdownUpdate();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSide_PossesPawn(APawn* InPawn);
+
+	UFUNCTION(Server, Reliable)
+	void IncreaseTimerCount();
 
 	UFUNCTION()
 	void MoveLeft();
@@ -57,15 +75,36 @@ public:
 	UFUNCTION()
 	void MoveRight();
 
+	UFUNCTION(Server, Reliable)
+	void Server_MoveLeft();
+
+	UFUNCTION(Server, Reliable)
+	void Server_MoveUp();
+
+	UFUNCTION(Server, Reliable)
+	void Server_MoveDown();
+
+	UFUNCTION(Server, Reliable)
+	void Server_MoveRight();
+
 	virtual void SetupInputComponent() override;
 	virtual void OnPossess(APawn* InPawn) override;
 
+	UFUNCTION(Client, Reliable)
+	void PossessPawn(APawn* InPawn);
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetSpeed(float fspeed);
+	
+	UFUNCTION()
 	void SetSpeed(float fspeed);
 
 	UPROPERTY(EditAnywhere, Category = "Current Direction")
 	EMoveDirection CurrentDirection;
 
 	APlayerPawn* ControlledPawn;
+
+	FTimerHandle RepeatingHandle;
 
 
 	

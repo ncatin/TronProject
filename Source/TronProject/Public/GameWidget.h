@@ -21,8 +21,6 @@ protected:
 
 	TArray<FText> CountdownText = {FText::FromString(" "), FText::FromString("3"), FText::FromString("2"), FText::FromString("1"), FText::FromString("GO!")};
 
-	int32 CountdownIndex = 0;
-
 public:
 	UGameWidget(const FObjectInitializer& ObjectInitializer);
 
@@ -36,7 +34,7 @@ public:
 	UHorizontalBox* P2HorizontalBox;
 
 	UFUNCTION()
-	void Countdown();
+	void Countdown(int32 CountdownIndex);
 
 	FTimerHandle RepeatingHandle;
 	
