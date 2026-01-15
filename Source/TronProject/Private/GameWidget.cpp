@@ -17,8 +17,10 @@ UGameWidget::UGameWidget(const FObjectInitializer& ObjectInitializer): Super(Obj
 
 void UGameWidget::Countdown(int32 CountdownIndex){
 	if (CountdownIndex > 4) {
-		CountdownTextBlock->SetText(FText::GetEmpty());
-		return;
+		CountdownTextBlock->SetVisibility(ESlateVisibility::Hidden);
 	}
-	CountdownTextBlock->SetText(CountdownText[CountdownIndex]);
+	else {
+		CountdownTextBlock->SetText(CountdownText[CountdownIndex]);
+	}
+	
 }

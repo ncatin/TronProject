@@ -8,6 +8,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/PlayerStart.h"
+#include "TronGameState.h"
 
 void ATronGameMode::BeginPlay(){
 
@@ -44,6 +45,11 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 			NewPawn = GetWorld()->SpawnActor<APawn>(PlayerClass, SpawnLocation, SpawnRotation, SpawnParams);
 			UE_LOG(LogTemp, Warning, TEXT("%s: %s"), *NewPawn->GetName(), *NewTronPlayer->GetName());
 			JoinedPlayers++;
+			
+			if (JoinedPlayers == 2) {
+				ATronGameState* TronGameState = Cast<ATronGameState>(GetWorld()->GetGameState());
+				if (TronGameState) TronGameState->StartTimer();
+			}
 
 			if (NewPawn) {
 				NewTronPlayer->ServerSide_PossesPawn(NewPawn);

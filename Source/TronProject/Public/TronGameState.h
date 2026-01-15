@@ -14,4 +14,20 @@ class TRONPROJECT_API ATronGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 	
+protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void BeginPlay() override;
+
+public:
+	FTimerHandle RepeatingHandle;
+
+	UFUNCTION()
+	void StartTimer();
+
+	UPROPERTY(Replicated)
+	int32 Countdown = 0;
+
+	UFUNCTION()
+	void UpdateCountdown();
 };

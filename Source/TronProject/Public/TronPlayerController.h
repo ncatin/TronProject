@@ -26,8 +26,6 @@ protected:
 
 	virtual void AcknowledgePossession(APawn* P) override;
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -51,17 +49,13 @@ public:
 	UPROPERTY()
 	UUserWidget* UIWidget;
 
-	UPROPERTY(ReplicatedUsing = OnRep_CountdownUpdate, BlueprintReadOnly, Category = "UI")
 	int32 CountdownIndex = 0;
-
-	UFUNCTION()
-	void OnRep_CountdownUpdate();
 
 	UFUNCTION(Server, Reliable)
 	void ServerSide_PossesPawn(APawn* InPawn);
 
-	UFUNCTION(Server, Reliable)
-	void IncreaseTimerCount();
+	UFUNCTION(NetMulticast, Reliable)
+	void GameStateCountdown();
 
 	UFUNCTION()
 	void MoveLeft();

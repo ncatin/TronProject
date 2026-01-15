@@ -15,6 +15,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Net/UnrealNetwork.h"
 #include "GameWidget.h"
+#include "TronGameState.h"
 
 
 void ATronPlayerController::BeginPlay() {
@@ -34,11 +35,6 @@ void ATronPlayerController::BeginPlay() {
 		UIWidget = CreateWidget<UUserWidget>(this, UIClass);
 		UIWidget->AddToViewport();
 	}
-	if (HasAuthority()) {
-		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
-		TimerManager.SetTimer(RepeatingHandle, this, &ATronPlayerController::IncreaseTimerCount, 1, true);
-	}
-	
 	
 }
 
@@ -60,12 +56,6 @@ void ATronPlayerController::AcknowledgePossession(APawn* P){
 	ControlledPawn->OnPossess();
 }
 
-void ATronPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ATronPlayerController, CountdownIndex);
-}
-
 
 void ATronPlayerController::ServerSide_PossesPawn_Implementation(APawn* InPawn){
 	if (InPawn && HasAuthority()) {
@@ -73,26 +63,17 @@ void ATronPlayerController::ServerSide_PossesPawn_Implementation(APawn* InPawn){
 	}
 }
 
-void ATronPlayerController::OnRep_CountdownUpdate()
-{
-	if (UIWidget){
+
+void ATronPlayerController::GameStateCountdown_Implementation(){
+	CountdownIndex = Cast<ATronGameState>(GetWorld()->GetGameState())->Countdown;
+	if (UIWidget) {
 		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
 		GameWidget->Countdown(CountdownIndex);
-		UE_LOG(LogTemp, Warning, TEXT("%d"), CountdownIndex);
+		UE_LOG(LogTemp, Warning, TEXT("%s: %d"), *GetName() , CountdownIndex);
 	}
-}
-
-void ATronPlayerController::IncreaseTimerCount_Implementation(){
-
-	if (CountdownIndex <= 4) {
-		CountdownIndex++;
-	}
-	else {
+	if (CountdownIndex > 4) {
 		SetSpeed(700);
-		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
-		TimerManager.ClearTimer(RepeatingHandle);
 	}
-	OnRep_CountdownUpdate();
 }
 
 void ATronPlayerController::MoveLeft(){
