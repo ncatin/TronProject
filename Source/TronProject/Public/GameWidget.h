@@ -27,6 +27,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UTextBlock* CountdownTextBlock;
 
+	/*UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UTextBlock* TestTextBlock;*/
+
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UHorizontalBox* P1HorizontalBox;
 

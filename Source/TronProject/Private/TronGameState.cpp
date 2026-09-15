@@ -42,3 +42,8 @@ void ATronGameState::UpdateCountdown(){
 	
 	
 }
+
+void ATronGameState::OnRep_Countdown(){
+	ATronPlayerController* PlayerController = Cast<ATronPlayerController>(GetWorld()->GetFirstPlayerController());
+	PlayerController->GameStateCountdown();
+}

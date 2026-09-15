@@ -29,7 +29,6 @@ void ATronPlayerController::BeginPlay() {
 	ConsoleCommand(TEXT("show splines"));
 	
 	CurrentDirection = EMoveDirection::ED_Left;
-	UE_LOG(LogTemp, Warning, TEXT("Current Direction: %s"), *UEnum::GetValueAsString(CurrentDirection));
 
 	if (IsLocalPlayerController()) {
 		UIWidget = CreateWidget<UUserWidget>(this, UIClass);
@@ -69,7 +68,6 @@ void ATronPlayerController::GameStateCountdown_Implementation(){
 	if (UIWidget) {
 		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
 		GameWidget->Countdown(CountdownIndex);
-		UE_LOG(LogTemp, Warning, TEXT("%s: %d"), *GetName() , CountdownIndex);
 	}
 	if (CountdownIndex > 4) {
 		SetSpeed(700);
@@ -147,6 +145,7 @@ void ATronPlayerController::Server_MoveUp_Implementation()
 		FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
 		ControlledPawn->Turn(NewRotation);
 		CurrentDirection = EMoveDirection::ED_Up;
+		
 	}
 }
 
@@ -188,22 +187,20 @@ void ATronPlayerController::PossessPawn_Implementation(APawn* InPawn)
 	ControlledPawn = Cast<APlayerPawn>(InPawn);
 	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
 	ControlledPawn->speed = 0;
-	UE_LOG(LogTemp, Warning, TEXT("%s: %s"), *InPawn->GetName(), *ControlledPawn->GetVelocity().ToString());
 
 	ControlledPawn->OnPossess();
 }
 
 void ATronPlayerController::Server_SetSpeed_Implementation(float fspeed){
 	ControlledPawn->speed = fspeed;
+	
 }
 
 void ATronPlayerController::SetSpeed(float fspeed){
 	if (HasAuthority()) {
 		ControlledPawn->speed = fspeed;
-		UE_LOG(LogTemp, Warning, TEXT("Speed Set"));
 		ControlledPawn->OnRep_Speed();
-	}
-	else {
+	}else{
 		Server_SetSpeed(fspeed);
 	}
 	

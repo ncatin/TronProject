@@ -60,6 +60,9 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 			StartPoint->Tags.Remove(FName("Available"));
 
 		}
+		else {
+			UE_LOG(LogTemp, Warning, TEXT("Error: Can't find start point"));
+		}
 	}
 }
 
@@ -75,4 +78,8 @@ AActor* ATronGameMode::ChoosePlayerStart_Implementation(AController* Player)
 		UE_LOG(LogTemp, Warning, TEXT("Error: No Player Start"));
 	}
 	return Super::ChoosePlayerStart_Implementation(Player);
+}
+
+void ATronGameMode::Tick(float DeltaTime){
+
 }

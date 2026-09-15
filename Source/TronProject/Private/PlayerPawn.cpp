@@ -4,7 +4,7 @@
 #include "PlayerPawn.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "Components/SplineComponent.h"
+
 #include "Components/SplineMeshComponent.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
@@ -38,6 +38,10 @@ APlayerPawn::APlayerPawn()
 	PMComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	PMComponent->SetUpdatedComponent(RootComponent);
 
+	PMComponent->bInterpMovement = true;
+	PMComponent->bInterpRotation = true;
+	
+
 	SpComponent = CreateDefaultSubobject<USplineComponent>(TEXT("SplineComponent"));
 	SpComponent->bAllowDiscontinuousSpline = true;
 
@@ -56,24 +60,25 @@ void APlayerPawn::BeginPlay()
 	CollisionCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerPawn::OnCollision);
 
 	FTimerManager& TimerManager = GetWorldTimerManager();
-	TimerManager.SetTimer(RepeatingHandle, this, &APlayerPawn::GetCurrentPointPosition, PointCaptureRate, true);
-
-	
+	TimerManager.SetTimer(RepeatingHandle, this, &APlayerPawn::Rep_GetCurrentPointPosition, PointCaptureRate, true);
 
 }
 
 void APlayerPawn::OnConstruction(const FTransform& Transform){
 	Super::OnConstruction(Transform);
-
-	SpComponent->SetLocationAtSplinePoint(0, GetActorLocation(), ESplineCoordinateSpace::World);
+	
+	SpComponent->SetLocationAtSplinePoint(0, GetActorLocation(), ESplineCoordinateSpace::Local);
+	SpComponent->SetLocationAtSplinePoint(1, GetActorLocation(), ESplineCoordinateSpace::Local);
 
 	SpComponent->SetSplinePointType(0, ESplinePointType::Linear);
 	SpComponent->SetSplinePointType(1, ESplinePointType::Linear);
 
-	LocationStart = SpComponent->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
-	LocationEnd = SpComponent->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
+	SpComponent->UpdateSpline();
 
-	CreateSplineMesh();
+	LocationStart = SpComponent->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::Local);
+	LocationEnd = SpComponent->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::Local);
+
+	Rep_CreateSplineMesh();
 
 	RegisterAllComponents();
 	
@@ -84,13 +89,23 @@ void APlayerPawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APlayerPawn, speed);
+	DOREPLIFETIME(APlayerPawn, CurrentSplineIndex);
+	DOREPLIFETIME(APlayerPawn, CurrentSplineMeshIndex);
+	DOREPLIFETIME(APlayerPawn, bDead);
+	DOREPLIFETIME(APlayerPawn, PointCaptureRate);
+	DOREPLIFETIME(APlayerPawn, SplineMeshComponents);
+	DOREPLIFETIME(APlayerPawn, LocationStart);
+	DOREPLIFETIME(APlayerPawn, TangentStart);
+	DOREPLIFETIME(APlayerPawn, LocationEnd);
+	DOREPLIFETIME(APlayerPawn, TangentEnd);
+	DOREPLIFETIME(APlayerPawn, CurrentSplineMesh);
 }
 
 void APlayerPawn::OnPossess(){
 	if(HasAuthority()){
 		APlayerController* PlayerController = Cast<APlayerController>(GetController());
 		EnableInput(PlayerController);
-		PMComponent->Velocity = GetActorForwardVector() * speed;
+		velocity = GetActorForwardVector() * speed;
 	}
 	else {
 		Server_OnPossess();
@@ -101,18 +116,65 @@ void APlayerPawn::Server_OnPossess_Implementation()
 {
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	EnableInput(PlayerController);
-	PMComponent->Velocity = GetActorForwardVector() * speed;
+	velocity = GetActorForwardVector() * speed;
 }
 
 void APlayerPawn::OnRep_Speed(){
-	PMComponent->Velocity = GetActorForwardVector() * speed;
+	velocity = GetActorForwardVector() * speed;
+	PMComponent->UpdateComponentVelocity();
+	UE_LOG(LogTemp, Warning, TEXT("Velocity Changed"));
+	
 }
 
 void APlayerPawn::GetCurrentPointPosition(){
 
-	SpComponent->SetLocationAtSplinePoint(CurrentSplineIndex, GetActorLocation(), ESplineCoordinateSpace::World);
-	LocationEnd = SpComponent->GetLocationAtSplinePoint(CurrentSplineIndex, ESplineCoordinateSpace::World);
-	SplineMeshComponents[CurrentSplineMeshIndex]->SetStartAndEnd(LocationStart, FVector::ZeroVector, LocationEnd, FVector::ZeroVector);
+	LocationEnd = GetActorLocation();
+	OnRep_LocationEnd();
+}
+
+void APlayerPawn::OnRep_LocationEnd() {
+	
+	SpComponent->RemoveSplinePoint(CurrentSplineIndex, true);
+
+	FSplinePoint NewPoint;
+
+	NewPoint.Position = LocationEnd;
+	NewPoint.InputKey = CurrentSplineIndex;
+	NewPoint.Type = ESplinePointType::Linear;
+
+	SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::Local);
+
+	if(SplineMeshComponents[CurrentSplineMeshIndex]){ //create splinemesh vairable equal to current spline, update end point, and replace current spline mesh with it
+		
+		CurrentSplineMesh = SplineMeshComponents[CurrentSplineMeshIndex];
+		//if (!CurrentSplineMesh->IsVisible()) CurrentSplineMesh->SetVisibility(true);
+		CurrentSplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd);
+		SplineMeshComponents[CurrentSplineMeshIndex] = CurrentSplineMesh;
+
+	}
+	SpComponent->UpdateSpline();
+	
+}
+
+void APlayerPawn::Rep_GetCurrentPointPosition(){
+	if (HasAuthority()) {
+		FVector NextPosition = GetActorLocation() + velocity * PointCaptureRate;
+		SetActorLocation(NextPosition);
+		GetCurrentPointPosition();
+		OnRep_LocationEnd(); 
+	}
+	else {
+		Server_GetCurrentPointPosition();
+	}
+}
+
+void APlayerPawn::Server_GetCurrentPointPosition_Implementation(){
+	GetCurrentPointPosition();
+	OnRep_LocationEnd();
+}
+
+void APlayerPawn::Multicast_GetCurrentPointPosition_Implementation(){
+	GetCurrentPointPosition();
 }
 
 void APlayerPawn::Turn(FRotator TurnDirection){
@@ -124,12 +186,18 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 		FVector SpawnPoint = LocationEnd;
 
 
-		AStaticMeshActor* CornerMesh = GetWorld()->SpawnActor<AStaticMeshActor>(SpawnPoint, FRotator::ZeroRotator);
+		AStaticMeshActor* CornerMesh = GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), FTransform(FRotator::ZeroRotator, SpawnPoint));
+		CornerMesh->SetRootComponent(CornerMesh->GetStaticMeshComponent());
+		CornerMesh->SetActorHiddenInGame(true);
 		CornerMesh->SetMobility(EComponentMobility::Movable);
+		CornerMesh->SetReplicates(true);
+		CornerMesh->SetReplicateMovement(true);
 		UStaticMeshComponent* StaticMeshComp = CornerMesh->GetStaticMeshComponent();
 		StaticMeshComp->SetStaticMesh(WallMesh);
 		StaticMeshComp->SetCastShadow(false);
 		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		StaticMeshComp->SetIsReplicated(true);
+		CornerMesh->SetActorHiddenInGame(false);
 
 		FSplinePoint NewPoint;
 
@@ -138,15 +206,16 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 		NewPoint.InputKey = ++CurrentSplineIndex;
 		NewPoint.Type = ESplinePointType::Linear;
 
-		SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::World);
-		SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex - 1, LocationStart, TangentStart, ESplineCoordinateSpace::World);
+		SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::Local);
+		SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex - 1, LocationStart, TangentStart, ESplineCoordinateSpace::Local);
 
-		CreateSplineMesh();
+		Rep_CreateSplineMesh();
 		CurrentSplineMeshIndex++;
 
 		SetActorRotation(TurnDirection);
-		PMComponent->Velocity = GetActorForwardVector() * speed;
-		UE_LOG(LogTemp, Warning, TEXT("Rotated"));
+		OnRep_Speed();
+		
+		PMComponent->SetUpdatedComponent(GetRootComponent());
 	}
 	else {
 		Server_Turn(TurnDirection);
@@ -175,34 +244,56 @@ void APlayerPawn::Server_Turn_Implementation(FRotator TurnDirection)
 	NewPoint.InputKey = ++CurrentSplineIndex;
 	NewPoint.Type = ESplinePointType::Linear;
 
-	SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::World);
-	SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex - 1, LocationStart, TangentStart, ESplineCoordinateSpace::World);
+	SpComponent->AddPoint(NewPoint, ESplineCoordinateSpace::Local);
+	SpComponent->GetLocationAndTangentAtSplinePoint(CurrentSplineIndex - 1, LocationStart, TangentStart, ESplineCoordinateSpace::Local);
 
-	CreateSplineMesh();
+	Rep_CreateSplineMesh();
 	CurrentSplineMeshIndex++;
 
 	SetActorRotation(TurnDirection);
-	PMComponent->Velocity = GetActorForwardVector() * speed;
-	UE_LOG(LogTemp, Warning, TEXT("Rotated"));
+	OnRep_Speed();
 }
 
 void APlayerPawn::CreateSplineMesh(){
 
+	UE_LOG(LogTemp, Warning, TEXT("Creating Spline Mesh"));
+
 	USplineMeshComponent* SplineMesh = NewObject<USplineMeshComponent>(this);
+	UE_LOG(LogTemp, Warning, TEXT("MeshLocation: %f %f %f"), SplineMesh->GetRelativeLocation().X, SplineMesh->GetRelativeLocation().Y, SplineMesh->GetRelativeLocation().Z);
+	SplineMesh->RegisterComponent();
+	SplineMesh->SetVisibility(false);
 	SplineMesh->SetMobility(EComponentMobility::Movable);
 	SplineMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	SplineMesh->SetupAttachment(SpComponent);
-	SplineMesh->bCastDynamicShadow = false;
 	if (WallMesh) SplineMesh->SetStaticMesh(WallMesh);
+	SplineMesh->SetupAttachment(SpComponent);
+	SplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd, true);
+	UE_LOG(LogTemp, Warning, TEXT("LocationStart: %f, %f, %f LocationEnd: %f, %f, %f"), LocationStart.X, LocationStart.Y, LocationStart.Z, LocationEnd.X, LocationEnd.Y, LocationEnd.Z);
+	
+	
+	SplineMesh->bCastDynamicShadow = false;
+	SplineMesh->SetIsReplicated(true);
+	
 
 	SplineMesh->SetStartScale(FVector2D(1,1));
 	SplineMesh->SetEndScale(FVector2D(1, 1));
-
-	SplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd);
-	SplineMesh->RegisterComponent();
+	
 
 	SplineMeshComponents.Add(SplineMesh);
+	SplineMesh->SetVisibility(true);
+}
 
+void APlayerPawn::Rep_CreateSplineMesh(){
+
+	if (HasAuthority()) {
+		CreateSplineMesh();
+	}
+	else {
+		Server_CreateSplineMesh();
+	}
+}
+
+void APlayerPawn::Server_CreateSplineMesh_Implementation(){
+	CreateSplineMesh();
 }
 
 void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult){
@@ -228,7 +319,8 @@ void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* 
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+	/*UE_LOG(LogTemp, Warning, TEXT("Client Velocity: %f %f %f "), PMComponent->Velocity.X, PMComponent->Velocity.Y, PMComponent->Velocity.Z);
+	UE_LOG(LogTemp, Warning, TEXT("Client Speed: %d "), speed);*/
 }
 
 

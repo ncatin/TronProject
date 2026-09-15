@@ -69,16 +69,16 @@ public:
 	UFUNCTION()
 	void MoveRight();
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	void Server_MoveLeft();
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	void Server_MoveUp();
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	void Server_MoveDown();
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	void Server_MoveRight();
 
 	virtual void SetupInputComponent() override;

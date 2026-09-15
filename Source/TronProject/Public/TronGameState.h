@@ -30,4 +30,7 @@ public:
 
 	UFUNCTION()
 	void UpdateCountdown();
+
+	UFUNCTION()
+	void OnRep_Countdown();
 };

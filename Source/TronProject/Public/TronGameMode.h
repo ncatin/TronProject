@@ -35,5 +35,8 @@ protected:
 	int32 JoinedPlayers = 0;
 	
 	FTimerHandle RepeatingHandle;
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
 	
 };
