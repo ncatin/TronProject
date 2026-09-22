@@ -58,6 +58,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	APlayerController* PlayerController;
+
 	UPROPERTY(Replicated)
 	int32 CurrentSplineIndex = 1;
 

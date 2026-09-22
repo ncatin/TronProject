@@ -16,6 +16,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 
 
 
@@ -103,7 +104,7 @@ void APlayerPawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 
 void APlayerPawn::OnPossess(){
 	if(HasAuthority()){
-		APlayerController* PlayerController = Cast<APlayerController>(GetController());
+		PlayerController = UGameplayStatics::GetPlayerController(GetWorld(),0);
 		EnableInput(PlayerController);
 		velocity = GetActorForwardVector() * speed;
 	}
@@ -114,7 +115,7 @@ void APlayerPawn::OnPossess(){
 
 void APlayerPawn::Server_OnPossess_Implementation()
 {
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	EnableInput(PlayerController);
 	velocity = GetActorForwardVector() * speed;
 }
@@ -196,6 +197,8 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 		StaticMeshComp->SetStaticMesh(WallMesh);
 		StaticMeshComp->SetCastShadow(false);
 		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		StaticMeshComp->SetCollisionProfileName(TEXT("OverlapAll"));
+		StaticMeshComp->SetGenerateOverlapEvents(true);
 		StaticMeshComp->SetIsReplicated(true);
 		CornerMesh->SetActorHiddenInGame(false);
 
@@ -236,7 +239,8 @@ void APlayerPawn::Server_Turn_Implementation(FRotator TurnDirection)
 	StaticMeshComp->SetStaticMesh(WallMesh);
 	StaticMeshComp->SetCastShadow(false);
 	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-
+	StaticMeshComp->SetCollisionProfileName(TEXT("OverlapAll"));
+	StaticMeshComp->SetGenerateOverlapEvents(true);
 	FSplinePoint NewPoint;
 
 	NewPoint.Position = GetActorLocation();
@@ -264,6 +268,8 @@ void APlayerPawn::CreateSplineMesh(){
 	SplineMesh->SetVisibility(false);
 	SplineMesh->SetMobility(EComponentMobility::Movable);
 	SplineMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	SplineMesh->SetCollisionProfileName(TEXT("OverlapAll"));
+	SplineMesh->SetGenerateOverlapEvents(true);
 	if (WallMesh) SplineMesh->SetStaticMesh(WallMesh);
 	SplineMesh->SetupAttachment(SpComponent);
 	SplineMesh->SetStartAndEnd(LocationStart, TangentStart, LocationEnd, TangentEnd, true);
@@ -298,21 +304,23 @@ void APlayerPawn::Server_CreateSplineMesh_Implementation(){
 
 void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult){
 
-	if (OtherActor == this) {
-		return;
+	if (OtherActor != this) {
+		speed = 0;
+		OnRep_Speed();
+
+		UE_LOG(LogTemp, Warning, TEXT("Overlapping Actor: %s"), *OtherComp->GetName());
+		bDead = true;
+		
+
+		if (ExplosionSystem) {
+			FVector SpawnLocation = this->GetActorLocation();
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionSystem, SpawnLocation, FRotator::ZeroRotator);
+		}
+
+		MeshComponent->SetVisibility(false);
+		UE_LOG(LogTemp, Warning, TEXT("Player %s dead"), *this->GetName());
 	}
-	bDead = true;
-
-	PMComponent->Velocity = GetActorForwardVector() * 0;
-
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-	DisableInput(PlayerController);
-
-	if (ExplosionSystem) {
-		FVector SpawnLocation = this->GetActorLocation();
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionSystem, SpawnLocation, FRotator::ZeroRotator);
-	}
-	MeshComponent->SetVisibility(false);
+	
 }
 
 // Called every frame
