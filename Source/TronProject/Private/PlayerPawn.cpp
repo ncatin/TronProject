@@ -127,6 +127,16 @@ void APlayerPawn::OnRep_Speed(){
 	
 }
 
+void APlayerPawn::OnRep_Dead() {
+	if (ExplosionSystem) {
+		FVector SpawnLocation = this->GetActorLocation();
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionSystem, SpawnLocation, FRotator::ZeroRotator);
+	}
+
+	MeshComponent->SetVisibility(false);
+	UE_LOG(LogTemp, Warning, TEXT("Player %s dead"), *this->GetName());
+}
+
 void APlayerPawn::GetCurrentPointPosition(){
 
 	LocationEnd = GetActorLocation();
@@ -310,15 +320,7 @@ void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* 
 
 		UE_LOG(LogTemp, Warning, TEXT("Overlapping Actor: %s"), *OtherComp->GetName());
 		bDead = true;
-		
-
-		if (ExplosionSystem) {
-			FVector SpawnLocation = this->GetActorLocation();
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionSystem, SpawnLocation, FRotator::ZeroRotator);
-		}
-
-		MeshComponent->SetVisibility(false);
-		UE_LOG(LogTemp, Warning, TEXT("Player %s dead"), *this->GetName());
+		OnRep_Dead();
 	}
 	
 }
@@ -327,8 +329,7 @@ void APlayerPawn::OnCollision(UPrimitiveComponent* OverlappedComponent, AActor* 
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	/*UE_LOG(LogTemp, Warning, TEXT("Client Velocity: %f %f %f "), PMComponent->Velocity.X, PMComponent->Velocity.Y, PMComponent->Velocity.Z);
-	UE_LOG(LogTemp, Warning, TEXT("Client Speed: %d "), speed);*/
+	
 }
 
 

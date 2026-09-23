@@ -49,13 +49,11 @@ public:
 	UPROPERTY()
 	UUserWidget* UIWidget;
 
-	int32 CountdownIndex = 0;
-
 	UFUNCTION(Server, Reliable)
 	void ServerSide_PossesPawn(APawn* InPawn);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void GameStateCountdown();
+	void GameStateCountdown(int CountdownIndex);
 
 	UFUNCTION()
 	void MoveLeft();

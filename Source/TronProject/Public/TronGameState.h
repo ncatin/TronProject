@@ -22,15 +22,4 @@ protected:
 public:
 	FTimerHandle RepeatingHandle;
 
-	UFUNCTION()
-	void StartTimer();
-
-	UPROPERTY(Replicated)
-	int32 Countdown = 0;
-
-	UFUNCTION()
-	void UpdateCountdown();
-
-	UFUNCTION()
-	void OnRep_Countdown();
 };

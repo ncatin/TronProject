@@ -7,7 +7,7 @@
 #include "TronGameMode.generated.h"
 
 
-class TronPlayerController;
+class ATronPlayerController;
 class AStaticCameraActor;
 
 UCLASS()
@@ -25,11 +25,23 @@ public:
 	UPROPERTY(EditAnywhere)
 	TArray<AActor*> PlayerStarts;
 
+	UPROPERTY(EditAnywhere)
+	TArray<ATronPlayerController*> PlayerControllers;
+
+	UPROPERTY(Replicated)
+	int32 Countdown = 0;
+
 	void BeginPlay() override;
 
 protected:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void StartTimer();
+
+	void UpdateCountdown();
 
 	int32 ReadyPlayers = 0;
 	int32 JoinedPlayers = 0;

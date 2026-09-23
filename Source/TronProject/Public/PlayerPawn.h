@@ -66,7 +66,7 @@ protected:
 	UPROPERTY(Replicated)
 	int32 CurrentSplineMeshIndex = 0;
 	
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_Dead)
 	bool bDead = false;
 
 	FTimerHandle RepeatingHandle;
@@ -129,6 +129,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly)
 	USoundBase* DeathSoundEffect;
+
+	UFUNCTION()
+	void OnRep_Dead();
 
 	UFUNCTION()
 	void OnRep_Speed();

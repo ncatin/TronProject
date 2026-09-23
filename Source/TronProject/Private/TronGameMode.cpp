@@ -8,6 +8,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/PlayerStart.h"
+#include <Net/UnrealNetwork.h>
 #include "TronGameState.h"
 
 void ATronGameMode::BeginPlay(){
@@ -18,6 +19,7 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 	
 	ATronPlayerController* NewTronPlayer = Cast<ATronPlayerController>(NewPlayer);
 	if (NewTronPlayer) {
+		PlayerControllers.Add(NewTronPlayer);
 		UE_LOG(LogTemp, Warning, TEXT("%s"), *NewTronPlayer->GetName());
 		AActor* StartPoint = FindPlayerStart(NewTronPlayer);
 		if (StartPoint) {
@@ -47,8 +49,7 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 			JoinedPlayers++;
 			
 			if (JoinedPlayers == 2) {
-				ATronGameState* TronGameState = Cast<ATronGameState>(GetWorld()->GetGameState());
-				if (TronGameState) TronGameState->StartTimer();
+				StartTimer();
 			}
 
 			if (NewPawn) {
@@ -78,6 +79,34 @@ AActor* ATronGameMode::ChoosePlayerStart_Implementation(AController* Player)
 		UE_LOG(LogTemp, Warning, TEXT("Error: No Player Start"));
 	}
 	return Super::ChoosePlayerStart_Implementation(Player);
+}
+
+void ATronGameMode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ATronGameMode, Countdown);
+}
+
+void ATronGameMode::StartTimer() {
+	UE_LOG(LogTemp, Warning, TEXT("Starting Timer"));
+	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+	TimerManager.SetTimer(RepeatingHandle, this, &ATronGameMode::UpdateCountdown, 1, true);
+}
+
+void ATronGameMode::UpdateCountdown() {
+	UE_LOG(LogTemp, Warning, TEXT("counting down"));
+	if (Countdown <= 5) {
+		Countdown++;
+		for (ATronPlayerController* PlayerController : PlayerControllers) {
+			PlayerController->GameStateCountdown(Countdown);
+		}
+	}
+	else {
+		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+		TimerManager.ClearTimer(RepeatingHandle);
+	}
+
+
 }
 
 void ATronGameMode::Tick(float DeltaTime){

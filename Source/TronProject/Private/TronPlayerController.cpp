@@ -63,8 +63,8 @@ void ATronPlayerController::ServerSide_PossesPawn_Implementation(APawn* InPawn){
 }
 
 
-void ATronPlayerController::GameStateCountdown_Implementation(){
-	CountdownIndex = Cast<ATronGameState>(GetWorld()->GetGameState())->Countdown;
+void ATronPlayerController::GameStateCountdown_Implementation(int CountdownIndex){
+	
 	if (UIWidget) {
 		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
 		GameWidget->Countdown(CountdownIndex);
