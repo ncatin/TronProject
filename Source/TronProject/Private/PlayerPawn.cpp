@@ -17,7 +17,7 @@
 #include "Camera/CameraComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
-
+#include "TronPlayerController.h"
 
 
 // Sets default values
@@ -62,8 +62,21 @@ void APlayerPawn::BeginPlay()
 
 	FTimerManager& TimerManager = GetWorldTimerManager();
 	TimerManager.SetTimer(RepeatingHandle, this, &APlayerPawn::Rep_GetCurrentPointPosition, PointCaptureRate, true);
+	
+	TronPC = Cast<ATronPlayerController>(GetOwner());
+
+	if (TronPC) {
+		UE_LOG(LogTemp, Warning, TEXT("Pawn %s has controller: %s"), *this->GetName(), *TronPC->GetName());
+	}
 
 }
+
+void APlayerPawn::EndPlay(const EEndPlayReason::Type EndPlayReason){
+	for (AStaticMeshActor* Mesh : CornerMeshes) {
+		Mesh->Destroy();
+	}
+}
+
 
 void APlayerPawn::OnConstruction(const FTransform& Transform){
 	Super::OnConstruction(Transform);
@@ -128,13 +141,21 @@ void APlayerPawn::OnRep_Speed(){
 }
 
 void APlayerPawn::OnRep_Dead() {
+
+	
 	if (ExplosionSystem) {
 		FVector SpawnLocation = this->GetActorLocation();
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionSystem, SpawnLocation, FRotator::ZeroRotator);
 	}
 
 	MeshComponent->SetVisibility(false);
-	UE_LOG(LogTemp, Warning, TEXT("Player %s dead"), *this->GetName());
+	
+	if (TronPC) {
+		TronPC->OnDeath();
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("%s: No player controller error"), *this->GetName());
+	}
 }
 
 void APlayerPawn::GetCurrentPointPosition(){
@@ -177,9 +198,11 @@ void APlayerPawn::Rep_GetCurrentPointPosition(){
 	else {
 		Server_GetCurrentPointPosition();
 	}
+	
 }
 
 void APlayerPawn::Server_GetCurrentPointPosition_Implementation(){
+	
 	GetCurrentPointPosition();
 	OnRep_LocationEnd();
 }
@@ -211,6 +234,7 @@ void APlayerPawn::Turn(FRotator TurnDirection){
 		StaticMeshComp->SetGenerateOverlapEvents(true);
 		StaticMeshComp->SetIsReplicated(true);
 		CornerMesh->SetActorHiddenInGame(false);
+		CornerMeshes.Add(CornerMesh);
 
 		FSplinePoint NewPoint;
 
@@ -251,6 +275,7 @@ void APlayerPawn::Server_Turn_Implementation(FRotator TurnDirection)
 	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	StaticMeshComp->SetCollisionProfileName(TEXT("OverlapAll"));
 	StaticMeshComp->SetGenerateOverlapEvents(true);
+	CornerMeshes.Add(CornerMesh);
 	FSplinePoint NewPoint;
 
 	NewPoint.Position = GetActorLocation();

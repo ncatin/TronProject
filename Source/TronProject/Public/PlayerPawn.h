@@ -54,9 +54,13 @@ public:
 	// Sets default values for this pawn's properties
 	APlayerPawn();
 
+	ATronPlayerController* TronPC;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	APlayerController* PlayerController;
 
@@ -78,6 +82,9 @@ protected:
 	TArray<USplineMeshComponent*> SplineMeshComponents;
 
 	UPROPERTY(Replicated)
+	TArray<AStaticMeshActor*> CornerMeshes;
+
+	UPROPERTY(Replicated)
 	USplineMeshComponent* CurrentSplineMesh;
 
 	UPROPERTY(Replicated)
@@ -92,11 +99,6 @@ protected:
 	UPROPERTY(Replicated)
 	FVector TangentEnd;
 
-	/*UPROPERTY(ReplicatedUsing = OnRep_SplinePoints)
-	TArray<FTronSplinePoint> TronSplinePoints;
-
-	UFUNCTION()
-	void OnRep_SplinePoints();*/
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 

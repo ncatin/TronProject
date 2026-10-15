@@ -22,13 +22,14 @@ void ATronPlayerController::BeginPlay() {
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer())) {
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
-
+	
 	AStaticCameraActor* StaticCamera = GetWorld()->SpawnActor<AStaticCameraActor>(FVector(0.0f, 0.0f, 3000.0f), FRotator(-90.0f, 0.0f, 0.0f));
 	SetViewTarget(StaticCamera);
 
 	ConsoleCommand(TEXT("show splines"));
 	
 	CurrentDirection = EMoveDirection::ED_Left;
+
 
 	if (IsLocalPlayerController()) {
 		UIWidget = CreateWidget<UUserWidget>(this, UIClass);
@@ -45,14 +46,17 @@ void ATronPlayerController::OnRep_Pawn()
 {
 }
 
-void ATronPlayerController::AcknowledgePossession(APawn* P){
-	Super::AcknowledgePossession(P);
-	ControlledPawn = Cast<APlayerPawn>(P);
-	if (!ControlledPawn) UE_LOG(LogTemp, Warning, TEXT("No Pawn"));
-	UE_LOG(LogTemp, Warning, TEXT("Possession Acknowledged"));
-	ControlledPawn->speed = 0;
+void ATronPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	ControlledPawn->OnPossess();
+	DOREPLIFETIME(ATronPlayerController, lives);
+}
+
+void ATronPlayerController::Server_OnDeath_Implementation(){
+	UE_LOG(LogTemp, Warning, TEXT("Calling OnDeath"));
+	lives--;
+	bDead = true;
+	GameMode->EndMatch(this);
 }
 
 
@@ -72,6 +76,21 @@ void ATronPlayerController::GameStateCountdown_Implementation(int CountdownIndex
 	if (CountdownIndex > 4) {
 		SetSpeed(700);
 	}
+}
+
+void ATronPlayerController::DeductLife(FName PID){
+	if (UIWidget) {
+		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
+		if (PID == "P1") {
+			int index = GameWidget->P1HorizontalBox->GetChildrenCount();
+			GameWidget->P1HorizontalBox->RemoveChildAt(index);
+		}
+		if (PID == "P2") {
+			int index = GameWidget->P2HorizontalBox->GetChildrenCount();
+			GameWidget->P2HorizontalBox->RemoveChildAt(index);
+		}
+	}
+	
 }
 
 void ATronPlayerController::MoveLeft(){
@@ -204,4 +223,14 @@ void ATronPlayerController::SetSpeed(float fspeed){
 		Server_SetSpeed(fspeed);
 	}
 	
+}
+
+void ATronPlayerController::OnDeath(){
+	
+	if (GetLocalRole() < ROLE_Authority) {
+		Server_OnDeath();
+	}
+	else {
+		Server_OnDeath_Implementation();
+	}
 }

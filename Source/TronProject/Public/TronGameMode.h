@@ -33,19 +33,42 @@ public:
 
 	void BeginPlay() override;
 
+	UFUNCTION()
+	void EndMatch(ATronPlayerController* P);
+
+	UFUNCTION()
+	void ResetGame(FName PlayerID);
+
 protected:
+	UFUNCTION()
+	void SpawnPawns(ATronPlayerController* P);
+
+	UFUNCTION()
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+
+	UFUNCTION()
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	UFUNCTION()
 	void StartTimer();
 
+	UFUNCTION()
 	void UpdateCountdown();
 
+	
+	UPROPERTY()
+	bool bEndingMatch = false;
+
+	UPROPERTY()
 	int32 ReadyPlayers = 0;
+
+	UPROPERTY()
 	int32 JoinedPlayers = 0;
 	
+	UPROPERTY()
 	FTimerHandle RepeatingHandle;
 
 	// Called every frame

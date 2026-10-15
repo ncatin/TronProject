@@ -10,51 +10,59 @@
 #include "GameFramework/PlayerStart.h"
 #include <Net/UnrealNetwork.h>
 #include "TronGameState.h"
+#include "PlayerPawn.h"
 
 void ATronGameMode::BeginPlay(){
 
+}
+
+void ATronGameMode::SpawnPawns(ATronPlayerController* P){
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = P;
+
+	APlayerPawn* NewPawn = Cast<APlayerPawn>(GetWorld()->SpawnActor<APawn>(P->PlayerPawnClass, P->SpawnPoint, P->SpawnRotation, SpawnParams));
+	if (NewPawn) {
+		P->ServerSide_PossesPawn(NewPawn);
+	}
 }
 
 void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer){
 	
 	ATronPlayerController* NewTronPlayer = Cast<ATronPlayerController>(NewPlayer);
 	if (NewTronPlayer) {
+		NewTronPlayer->GameMode = this;
+		NewTronPlayer->lives = 3;
 		PlayerControllers.Add(NewTronPlayer);
 		UE_LOG(LogTemp, Warning, TEXT("%s"), *NewTronPlayer->GetName());
 		AActor* StartPoint = FindPlayerStart(NewTronPlayer);
 		if (StartPoint) {
-			FVector SpawnLocation = StartPoint->GetActorLocation();
-			FRotator SpawnRotation;
+			NewTronPlayer->SpawnPoint = StartPoint->GetActorLocation();
+			
 			if (StartPoint->ActorHasTag(FName("Right"))) {
-				SpawnRotation = FRotator(0.0f, -90.0f, 0.0f);
+				NewTronPlayer->SpawnRotation = FRotator(0.0f, -90.0f, 0.0f);
 				NewTronPlayer->CurrentDirection = EMoveDirection::ED_Left;
 			}
 			else {
-				SpawnRotation = FRotator(0.0f, 90.0f, 0.0f);
+				NewTronPlayer->SpawnRotation = FRotator(0.0f, 90.0f, 0.0f);
 				NewTronPlayer->CurrentDirection = EMoveDirection::ED_Right;
 			}
 			
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = NewTronPlayer;
-
-			APawn* NewPawn;
-			UClass* PlayerClass;
 			if (JoinedPlayers == 0) {
-				PlayerClass = PlayerOne;
+				NewTronPlayer->PlayerPawnClass = PlayerOne;
+				NewTronPlayer->PlayerID = FName("P1");
 			}else{
-				PlayerClass = PlayerTwo;
+				NewTronPlayer->PlayerPawnClass = PlayerTwo;
+				NewTronPlayer->PlayerID = FName("P2");
 			}
-			NewPawn = GetWorld()->SpawnActor<APawn>(PlayerClass, SpawnLocation, SpawnRotation, SpawnParams);
-			UE_LOG(LogTemp, Warning, TEXT("%s: %s"), *NewPawn->GetName(), *NewTronPlayer->GetName());
+
+			SpawnPawns(NewTronPlayer);
+
 			JoinedPlayers++;
 			
 			if (JoinedPlayers == 2) {
 				StartTimer();
 			}
-
-			if (NewPawn) {
-				NewTronPlayer->ServerSide_PossesPawn(NewPawn);
-			}
+			
 			else {
 				UE_LOG(LogTemp, Warning, TEXT("Error: Posession failed"));
 			}
@@ -107,6 +115,39 @@ void ATronGameMode::UpdateCountdown() {
 	}
 
 
+}
+
+void ATronGameMode::EndMatch(ATronPlayerController* DeadPlayer){
+	if (!bEndingMatch) {
+		bEndingMatch = true;
+
+		if (DeadPlayer->lives == 0) {
+			//end game
+		}
+		for (ATronPlayerController* P : PlayerControllers) {
+			P->UnPossess();
+		}
+
+		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+
+		FTimerDelegate Delegate;
+
+		Delegate.BindUObject(this, &ATronGameMode::ResetGame, DeadPlayer->PlayerID);
+
+		TimerManager.SetTimer(RepeatingHandle, Delegate, 3, false);
+
+	}
+	
+	
+}
+
+void ATronGameMode::ResetGame(FName PlayerID){
+	for (ATronPlayerController* P : PlayerControllers) {
+		P->DeductLife(PlayerID);
+		P->ControlledPawn->Destroy();
+		SpawnPawns(P);
+	}
+	bEndingMatch = false;
 }
 
 void ATronGameMode::Tick(float DeltaTime){

@@ -11,6 +11,8 @@
 class UInputMappingContext;
 class UInputAction;
 class APlayerPawn;
+class ATronGameMode;
+
 
 UCLASS()
 class TRONPROJECT_API ATronPlayerController : public APlayerController
@@ -24,9 +26,33 @@ protected:
 
 	virtual void OnRep_Pawn() override;
 
-	virtual void AcknowledgePossession(APawn* P) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnDeath();
 
 public:
+
+	UPROPERTY()
+	ATronGameMode* GameMode;
+
+	UPROPERTY(Replicated)
+	int32 lives = 3;
+
+	UPROPERTY()
+	bool bDead = false;
+
+	UPROPERTY()
+	FVector SpawnPoint;
+
+	UPROPERTY()
+	FName PlayerID;
+
+	UPROPERTY()
+	FRotator SpawnRotation;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<APawn> PlayerPawnClass;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputMappingContext* DefaultMappingContext;
@@ -48,6 +74,9 @@ public:
 
 	UPROPERTY()
 	UUserWidget* UIWidget;
+
+	UFUNCTION()
+	void DeductLife(FName PID);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSide_PossesPawn(APawn* InPawn);
@@ -90,6 +119,9 @@ public:
 	
 	UFUNCTION()
 	void SetSpeed(float fspeed);
+
+	UFUNCTION()
+	void OnDeath();
 
 	UPROPERTY(EditAnywhere, Category = "Current Direction")
 	EMoveDirection CurrentDirection;
