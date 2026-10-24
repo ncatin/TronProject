@@ -72,6 +72,7 @@ void APlayerPawn::BeginPlay()
 }
 
 void APlayerPawn::EndPlay(const EEndPlayReason::Type EndPlayReason){
+	Super::EndPlay(EndPlayReason);
 	for (AStaticMeshActor* Mesh : CornerMeshes) {
 		Mesh->Destroy();
 	}

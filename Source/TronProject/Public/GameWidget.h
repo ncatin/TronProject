@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/HorizontalBox.h"
+#include "Components/Image.h"
 #include "GameWidget.generated.h"
 
 /**
@@ -31,7 +32,13 @@ public:
 	UHorizontalBox* P1HorizontalBox;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UTextBlock* P1LivesTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UHorizontalBox* P2HorizontalBox;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UTextBlock* P2LivesTextBlock;
 
 	UFUNCTION()
 	void Countdown(int32 CountdownIndex);

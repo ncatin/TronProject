@@ -60,6 +60,7 @@ void ATronGameMode::HandleStartingNewPlayer_Implementation(APlayerController* Ne
 			JoinedPlayers++;
 			
 			if (JoinedPlayers == 2) {
+				Countdown = 0;
 				StartTimer();
 			}
 			
@@ -124,8 +125,17 @@ void ATronGameMode::EndMatch(ATronPlayerController* DeadPlayer){
 		if (DeadPlayer->lives == 0) {
 			//end game
 		}
+		
 		for (ATronPlayerController* P : PlayerControllers) {
-			P->UnPossess();
+			if (P && P->HasAuthority()) {
+				UE_LOG(LogTemp, Warning, TEXT("Player controller %s unpossessed"), *P->GetName());
+				P->EndMatch();
+				P->DeductLife(DeadPlayer->PlayerID);
+			}
+			else {
+				UE_LOG(LogTemp, Warning, TEXT("Unpossess not working"));
+			}
+			
 		}
 
 		FTimerManager& TimerManager = GetWorld()->GetTimerManager();
@@ -143,9 +153,10 @@ void ATronGameMode::EndMatch(ATronPlayerController* DeadPlayer){
 
 void ATronGameMode::ResetGame(FName PlayerID){
 	for (ATronPlayerController* P : PlayerControllers) {
-		P->DeductLife(PlayerID);
 		P->ControlledPawn->Destroy();
 		SpawnPawns(P);
+		Countdown = 0;
+		StartTimer();
 	}
 	bEndingMatch = false;
 }

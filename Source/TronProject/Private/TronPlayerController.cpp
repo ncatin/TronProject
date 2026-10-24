@@ -44,12 +44,69 @@ void ATronPlayerController::Tick(float DeltaTime){
 
 void ATronPlayerController::OnRep_Pawn()
 {
+	Super::OnRep_Pawn();
+	UE_LOG(LogTemp, Warning, TEXT("OnRep_Pawn called"));
 }
 
 void ATronPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const{
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ATronPlayerController, lives);
+}
+
+void ATronPlayerController::OnUnPossess(){
+	Super::OnUnPossess();
+	UE_LOG(LogTemp, Warning, TEXT("Overriden unpossess called"));
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer())) {
+		Subsystem->RemoveMappingContext(DefaultMappingContext);
+	}
+	
+}
+
+void ATronPlayerController::Client_DeductLife_Implementation(FName PID){
+	bool bSuccess;
+	UE_LOG(LogTemp, Warning, TEXT("Deduct Life running for client"));
+	if (UIWidget) {
+		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
+		if (PID == "P1") {
+			
+			int32 index = GameWidget->P1HorizontalBox->GetChildrenCount() - 1;
+
+			UE_LOG(LogTemp, Warning, TEXT("P1 Box Index: %d"), index);
+			bSuccess = GameWidget->P1HorizontalBox->RemoveChildAt(index);
+		}
+		else if (PID == "P2") {
+			int32 index = GameWidget->P2HorizontalBox->GetChildrenCount() - 1;
+
+			UE_LOG(LogTemp, Warning, TEXT("P1 Box Index: %d"), index);
+			bSuccess = GameWidget->P2HorizontalBox->RemoveChildAt(index);
+		}
+		else {
+			UE_LOG(LogTemp, Warning, TEXT("No PlayerID"));
+			bSuccess = false;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("Deduct Life For Client: %s"), bSuccess ? TEXT("Success") : TEXT("Failure"));
+	}
+}
+
+void ATronPlayerController::Server_DeductLife_Implementation(FName PID){
+	bool bSuccess;
+	UE_LOG(LogTemp, Warning, TEXT("Deduct Life running"));
+	if (UIWidget) {
+		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
+		if (PID == "P1") {
+			/*int32 index = GameWidget->P1HorizontalBox->GetChildrenCount() - 1;
+			bSuccess = GameWidget->P1HorizontalBox->RemoveChildAt(index);*/
+		}
+		else if (PID == "P2") {
+			/*int32 index = GameWidget->P2HorizontalBox->GetChildrenCount() - 1;
+			bSuccess = GameWidget->P2HorizontalBox->RemoveChildAt(index);*/
+		}
+		else {
+			UE_LOG(LogTemp, Warning, TEXT("No PlayerID"));
+		}
+		UE_LOG(LogTemp, Warning, TEXT("Deduct Life: %s"), bSuccess ? TEXT("Success") : TEXT("Failure"));
+	}
 }
 
 void ATronPlayerController::Server_OnDeath_Implementation(){
@@ -75,115 +132,136 @@ void ATronPlayerController::GameStateCountdown_Implementation(int CountdownIndex
 	}
 	if (CountdownIndex > 4) {
 		SetSpeed(700);
+		bMatchOver = false;
 	}
 }
 
 void ATronPlayerController::DeductLife(FName PID){
-	if (UIWidget) {
-		UGameWidget* GameWidget = Cast<UGameWidget>(UIWidget);
-		if (PID == "P1") {
-			int index = GameWidget->P1HorizontalBox->GetChildrenCount();
-			GameWidget->P1HorizontalBox->RemoveChildAt(index);
+	if (GetLocalRole() < ROLE_Authority) {
+		Server_DeductLife(PID);
+	}
+	else {
+		Client_DeductLife_Implementation(PID);
+	}
+}
+
+void ATronPlayerController::Server_EndMatch_Implementation(){
+	SetSpeed(0);
+	bMatchOver = true;
+
+}
+
+void ATronPlayerController::MoveLeft(){
+	if (!bMatchOver) {
+		if (HasAuthority()) {
+			if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
+				FRotator NewRotation = FRotator(0.0f, -90.0f, 0.0f);
+				ControlledPawn->Turn(NewRotation);
+				CurrentDirection = EMoveDirection::ED_Left;
+			}
 		}
-		if (PID == "P2") {
-			int index = GameWidget->P2HorizontalBox->GetChildrenCount();
-			GameWidget->P2HorizontalBox->RemoveChildAt(index);
+		else {
+			Server_MoveLeft();
 		}
 	}
 	
 }
 
-void ATronPlayerController::MoveLeft(){
+void ATronPlayerController::MoveUp(){
+
+	if (!bMatchOver) {
+		if (HasAuthority()) {
+			if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
+				FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
+				ControlledPawn->Turn(NewRotation);
+				CurrentDirection = EMoveDirection::ED_Up;
+			}
+		}
+		else {
+			Server_MoveUp();
+		}
+	}
+
+}
+
+void ATronPlayerController::MoveDown(){
+	if (!bMatchOver) {
+		if (HasAuthority()) {
+			if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
+				FRotator NewRotation = FRotator(0.0f, 180.0f, 0.0f);
+				ControlledPawn->Turn(NewRotation);
+				CurrentDirection = EMoveDirection::ED_Down;
+			}
+		}
+		else {
+			Server_MoveDown();
+		}
+	}
 	
-	if(HasAuthority()){
+}
+
+void ATronPlayerController::MoveRight(){
+	if (!bMatchOver) {
+		if (HasAuthority()) {
+			if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
+				FRotator NewRotation = FRotator(0.0f, 90.0f, 0.0f);
+				ControlledPawn->Turn(NewRotation);
+				CurrentDirection = EMoveDirection::ED_Right;
+			}
+		}
+		else {
+			Server_MoveRight();
+		}
+	}
+	
+}
+
+void ATronPlayerController::Server_MoveLeft_Implementation()
+{
+	if (!bMatchOver) {
 		if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
 			FRotator NewRotation = FRotator(0.0f, -90.0f, 0.0f);
 			ControlledPawn->Turn(NewRotation);
 			CurrentDirection = EMoveDirection::ED_Left;
 		}
 	}
-	else {
-		Server_MoveLeft();
-	}
-
+	
 }
 
-void ATronPlayerController::MoveUp(){
-
-	if (HasAuthority()) {
+void ATronPlayerController::Server_MoveUp_Implementation()
+{
+	if (!bMatchOver) {
 		if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
 			FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
 			ControlledPawn->Turn(NewRotation);
 			CurrentDirection = EMoveDirection::ED_Up;
 		}
 	}
-	else {
-		Server_MoveUp();
-	}
-
+	
 }
 
-void ATronPlayerController::MoveDown(){
-	if(HasAuthority()){
+void ATronPlayerController::Server_MoveDown_Implementation()
+{
+	if (!bMatchOver) {
 		if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
 			FRotator NewRotation = FRotator(0.0f, 180.0f, 0.0f);
 			ControlledPawn->Turn(NewRotation);
 			CurrentDirection = EMoveDirection::ED_Down;
 		}
 	}
-	else {
-		Server_MoveDown();
-	}
+	
 }
 
-void ATronPlayerController::MoveRight(){
-	if(HasAuthority()){
+void ATronPlayerController::Server_MoveRight_Implementation()
+{
+	if (!bMatchOver) {
 		if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
 			FRotator NewRotation = FRotator(0.0f, 90.0f, 0.0f);
 			ControlledPawn->Turn(NewRotation);
 			CurrentDirection = EMoveDirection::ED_Right;
 		}
 	}
-	else {
-		Server_MoveRight();
-	}
-}
-
-void ATronPlayerController::Server_MoveLeft_Implementation()
-{
-	if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
-		FRotator NewRotation = FRotator(0.0f, -90.0f, 0.0f);
-		ControlledPawn->Turn(NewRotation);
-		CurrentDirection = EMoveDirection::ED_Left;
-	}
-}
-
-void ATronPlayerController::Server_MoveUp_Implementation()
-{
-	if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
-		FRotator NewRotation = FRotator(0.0f, 0.0f, 0.0f);
-		ControlledPawn->Turn(NewRotation);
-		CurrentDirection = EMoveDirection::ED_Up;
-		
-	}
-}
-
-void ATronPlayerController::Server_MoveDown_Implementation()
-{
-	if (CurrentDirection == EMoveDirection::ED_Left || CurrentDirection == EMoveDirection::ED_Right) {
-		FRotator NewRotation = FRotator(0.0f, 180.0f, 0.0f);
-		ControlledPawn->Turn(NewRotation);
-		CurrentDirection = EMoveDirection::ED_Down;
-	}
-}
-
-void ATronPlayerController::Server_MoveRight_Implementation()
-{
-	if (CurrentDirection == EMoveDirection::ED_Up || CurrentDirection == EMoveDirection::ED_Down) {
-		FRotator NewRotation = FRotator(0.0f, 90.0f, 0.0f);
-		ControlledPawn->Turn(NewRotation);
-		CurrentDirection = EMoveDirection::ED_Right;
-	}
+	
 }
 
 void ATronPlayerController::SetupInputComponent(){
@@ -232,5 +310,14 @@ void ATronPlayerController::OnDeath(){
 	}
 	else {
 		Server_OnDeath_Implementation();
+	}
+}
+
+void ATronPlayerController::EndMatch(){
+	if (GetLocalRole() < ROLE_Authority) {
+		Server_EndMatch();
+	}
+	else {
+		Server_EndMatch_Implementation();
 	}
 }

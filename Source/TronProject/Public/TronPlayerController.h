@@ -28,8 +28,19 @@ protected:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual void OnUnPossess() override;
+
 	UFUNCTION(Server, Reliable)
 	void Server_OnDeath();
+
+	UFUNCTION(Server, Reliable)
+	void Server_EndMatch();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DeductLife(FName PID);
+
+	UFUNCTION(Client, Reliable)
+	void Client_DeductLife(FName PID);
 
 public:
 
@@ -41,6 +52,9 @@ public:
 
 	UPROPERTY()
 	bool bDead = false;
+
+	UPROPERTY()
+	bool bMatchOver = false;
 
 	UPROPERTY()
 	FVector SpawnPoint;
@@ -84,6 +98,7 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void GameStateCountdown(int CountdownIndex);
 
+
 	UFUNCTION()
 	void MoveLeft();
 
@@ -122,6 +137,9 @@ public:
 
 	UFUNCTION()
 	void OnDeath();
+
+	UFUNCTION()
+	void EndMatch();
 
 	UPROPERTY(EditAnywhere, Category = "Current Direction")
 	EMoveDirection CurrentDirection;
